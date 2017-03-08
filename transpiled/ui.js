@@ -10,7 +10,7 @@ var _extends = Object.assign || function (target) { for (var i = 1; i < argument
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
-var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
 exports.default = ui;
 
@@ -38,14 +38,14 @@ function _possibleConstructorReturn(self, call) { if (!self) { throw new Referen
 
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
-var any = _react.PropTypes.any;
-var array = _react.PropTypes.array;
-var func = _react.PropTypes.func;
-var node = _react.PropTypes.node;
-var object = _react.PropTypes.object;
-var string = _react.PropTypes.string;
+var any = _react.PropTypes.any,
+    array = _react.PropTypes.array,
+    func = _react.PropTypes.func,
+    node = _react.PropTypes.node,
+    object = _react.PropTypes.object,
+    string = _react.PropTypes.string;
 function ui(key) {
-  var opts = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
+  var opts = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
 
   if ((typeof key === 'undefined' ? 'undefined' : _typeof(key)) === 'object') {
     opts = key;
@@ -104,8 +104,7 @@ function ui(key) {
         // We do this in construct() to guarantee a new key at component
         // instantiation time wihch is needed for iterating through a list of
         // components with no explicit key
-
-        var _this = _possibleConstructorReturn(this, Object.getPrototypeOf(UI).call(this, props, ctx, queue));
+        var _this = _possibleConstructorReturn(this, (UI.__proto__ || Object.getPrototypeOf(UI)).call(this, props, ctx, queue));
 
         if (key === undefined) {
           _this.key = (WrappedComponent.displayName || WrappedComponent.name) + Math.floor(Math.random() * (1 << 30)).toString(16);
@@ -118,6 +117,9 @@ function ui(key) {
         // Immediately set this.uiPath and this.uiVars based on the incoming
         // context in class instantiation
         _this.getMergedContextVars(ctx);
+        _this.updateUI = _this.updateUI.bind(_this);
+        _this.resetUI = _this.resetUI.bind(_this);
+        _this._cachedUIProps = {}; // use to cache the lastest uiProps for wrappedComponent
         return _this;
       }
 
@@ -167,7 +169,7 @@ function ui(key) {
         value: function getDefaultUIState(uiState) {
           var _this2 = this;
 
-          var props = arguments.length <= 1 || arguments[1] === undefined ? this.props : arguments[1];
+          var props = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : this.props;
 
           var globalState = this.context.store.getState();
           var state = _extends({}, uiState);
@@ -216,7 +218,7 @@ function ui(key) {
         value: function getMergedContextVars() {
           var _this4 = this;
 
-          var ctx = arguments.length <= 0 || arguments[0] === undefined ? this.context : arguments[0];
+          var ctx = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.context;
 
           if (!this.uiVars || !this.uiPath) {
             var uiPath = ctx.uiPath || [];
@@ -243,21 +245,18 @@ function ui(key) {
       }, {
         key: 'getChildContext',
         value: function getChildContext() {
-          var _getMergedContextVars = this.getMergedContextVars();
-
-          var _getMergedContextVars2 = _slicedToArray(_getMergedContextVars, 2);
-
-          var uiVars = _getMergedContextVars2[0];
-          var uiPath = _getMergedContextVars2[1];
-
+          var _getMergedContextVars = this.getMergedContextVars(),
+              _getMergedContextVars2 = _slicedToArray(_getMergedContextVars, 2),
+              uiVars = _getMergedContextVars2[0],
+              uiPath = _getMergedContextVars2[1];
 
           return {
             uiKey: this.key,
             uiVars: uiVars,
             uiPath: uiPath,
 
-            updateUI: this.updateUI.bind(this),
-            resetUI: this.resetUI.bind(this)
+            updateUI: this.updateUI,
+            resetUI: this.resetUI
           };
         }
 
@@ -277,12 +276,9 @@ function ui(key) {
         key: 'updateUI',
         value: function updateUI(name, value) {
           // Get a list of all UI variables available to this context (which
-
-          var _getMergedContextVars3 = this.getMergedContextVars();
-
-          var _getMergedContextVars4 = _slicedToArray(_getMergedContextVars3, 1);
-
-          var uiVars = _getMergedContextVars4[0];
+          var _getMergedContextVars3 = this.getMergedContextVars(),
+              _getMergedContextVars4 = _slicedToArray(_getMergedContextVars3, 1),
+              uiVars = _getMergedContextVars4[0];
 
           var uiVarPath = uiVars[name];
 
@@ -335,11 +331,19 @@ function ui(key) {
           // We still use @connect() to connect to the store and listen for
           // changes in other cases.
           var ui = (0, _utils.getUIState)(this.context.store.getState());
+          var useCache = true;
 
-          return Object.keys(this.uiVars).reduce(function (props, k) {
+          var uiProps = Object.keys(this.uiVars).reduce(function (props, k) {
             props[k] = ui.getIn(_this5.uiVars[k].concat(k));
+            if (useCache && _this5._cachedUIProps[k] !== props[k]) {
+              useCache = false;
+            }
             return props;
           }, {}) || {};
+
+          // Use cache to avoid re-render for WrappedComponent if non of the props is changed
+          this._cachedUIProps = useCache ? this._cachedUIProps : uiProps;
+          return this._cachedUIProps;
         }
       }, {
         key: 'render',
@@ -348,8 +352,8 @@ function ui(key) {
             uiKey: this.key,
             uiPath: this.uiPath,
             ui: this.mergeUIProps(),
-            resetUI: this.resetUI.bind(this),
-            updateUI: this.updateUI.bind(this) }));
+            resetUI: this.resetUI,
+            updateUI: this.updateUI }));
         }
       }]);
 
