@@ -78,6 +78,9 @@ export default function ui(key, opts = {}) {
           // Immediately set this.uiPath and this.uiVars based on the incoming
           // context in class instantiation
           this.getMergedContextVars(ctx);
+          this.updateUI = this.updateUI.bind(this)
+          this.resetUI = this.resetUI.bind(this)
+          this._cachedUIProps = {} // use to cache the lastest uiProps for wrappedComponent
         }
 
         static propTypes = {
@@ -210,8 +213,8 @@ export default function ui(key, opts = {}) {
             uiVars,
             uiPath,
 
-            updateUI: ::this.updateUI,
-            resetUI: ::this.resetUI
+            updateUI: this.updateUI,
+            resetUI: this.resetUI
           };
         }
 
@@ -281,11 +284,19 @@ export default function ui(key, opts = {}) {
           // We still use @connect() to connect to the store and listen for
           // changes in other cases.
           const ui = getUIState(this.context.store.getState());
+          let useCache = true
 
-          return Object.keys(this.uiVars).reduce((props, k) => {
+          const uiProps = Object.keys(this.uiVars).reduce((props, k) => {
             props[k] = ui.getIn(this.uiVars[k].concat(k));
+            if (useCache && this._cachedUIProps[k] !== props[k]) {
+              useCache = false
+            }
             return props;
           }, {}) || {};
+
+          // Use cache to avoid re-render for WrappedComponent if non of the props is changed
+          this._cachedUIProps = useCache ? this._cachedUIProps : uiProps
+          return this._cachedUIProps
         }
 
         render() {
@@ -295,8 +306,8 @@ export default function ui(key, opts = {}) {
               uiKey={ this.key }
               uiPath={ this.uiPath }
               ui={ this.mergeUIProps() }
-              resetUI={ ::this.resetUI }
-              updateUI={ ::this.updateUI } />
+              resetUI={ this.resetUI }
+              updateUI={ this.updateUI } />
           );
         }
       }
