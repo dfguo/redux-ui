@@ -305,7 +305,6 @@ export default function ui(key, opts = {}) {
         }
 
         isUIDirty() {
-          // Might not be a good idea to use Immutable here
           const defaultUIState = new Map(this.getDefaultUIState(opts.state));
           const currentUIState = getUIState(this.context.store.getState()).get(this.key);
           if (opts.dirty) {
