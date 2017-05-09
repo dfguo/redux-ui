@@ -76,6 +76,7 @@ The `@ui` decorator injects four props into your components:
 3. `updateUI`: A function accepting either a name/value pair or object which
    updates state within `uiKey`
 4. `resetUI`: A function which resets the state within `uiKey` to its default
+5. `isUIDirty`: A function tells if UI state is dirty
 
 The decorator will set any default state specified (see below).
 On `componentWillUnmount` the entire state in `uiKey` will be set to undefined.
@@ -106,6 +107,9 @@ The decorator takes an object of options:
   mergeProps: () => ({}),
   // optional `options` passed to react-redux @connect
   options: {}
+  // optional `dirty`, a function has both default and current UI state passed in,
+  // allow you to customize the way to tell if UI state is dirty
+  dirty: (defaultState, currentState) => {}
 })
 ```
 
@@ -223,6 +227,7 @@ UI state:
 1. Should be global
 2. Should be easily managed from each component via an action
 3. Should be easy to reset (manually and when unmounting)
+4. Should be easy to tell if is dirty
 
 All of these goals should be easy to achieve.
 

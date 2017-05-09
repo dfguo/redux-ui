@@ -1,5 +1,6 @@
 'use strict';
 
+import { Map } from 'immutable';
 import React, { Component, PropTypes } from 'react';
 const { any, array, func, node, object, string } = PropTypes;
 import { bindActionCreators } from 'redux';
@@ -80,6 +81,7 @@ export default function ui(key, opts = {}) {
           this.getMergedContextVars(ctx);
           this.updateUI = this.updateUI.bind(this)
           this.resetUI = this.resetUI.bind(this)
+          this.isUIDirty = this.isUIDirty.bind(this)
           this._cachedUIProps = {} // use to cache the lastest uiProps for wrappedComponent
         }
 
@@ -104,7 +106,8 @@ export default function ui(key, opts = {}) {
 
           // Actions to pass to children
           updateUI: func,
-          resetUI: func
+          resetUI: func,
+          isUIDirty: func
         }
 
         // Get the existing context from a UI parent, if possible
@@ -118,7 +121,8 @@ export default function ui(key, opts = {}) {
           uiVars: object,
 
           updateUI: func,
-          resetUI: func
+          resetUI: func,
+          isUIDirty: func
         }
 
         componentWillMount() {
@@ -214,7 +218,8 @@ export default function ui(key, opts = {}) {
             uiPath,
 
             updateUI: this.updateUI,
-            resetUI: this.resetUI
+            resetUI: this.resetUI,
+            isUIDirty: this.isUIDirty
           };
         }
 
@@ -299,6 +304,16 @@ export default function ui(key, opts = {}) {
           return this._cachedUIProps
         }
 
+        isUIDirty() {
+          const defaultUIState = new Map(this.getDefaultUIState(opts.state));
+          const currentUIState = getUIState(this.context.store.getState()).get(this.key);
+          if (opts.dirty) {
+            return opts.dirty(defaultUIState, currentUIState);
+          } else {
+            return !defaultUIState.equals(currentUIState);
+          }
+        }
+
         render() {
           return (
             <WrappedComponent
@@ -307,7 +322,9 @@ export default function ui(key, opts = {}) {
               uiPath={ this.uiPath }
               ui={ this.mergeUIProps() }
               resetUI={ this.resetUI }
-              updateUI={ this.updateUI } />
+              updateUI={ this.updateUI }
+              isUIDirty={ this.isUIDirty }
+              />
           );
         }
       }
