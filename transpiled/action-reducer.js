@@ -44,7 +44,7 @@ var defaultState = exports.defaultState = new _immutable.Map({
 });
 
 function reducer() {
-  var state = arguments.length <= 0 || arguments[0] === undefined ? defaultState : arguments[0];
+  var state = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : defaultState;
   var action = arguments[1];
 
   var key = action.payload && (action.payload.key || []);
@@ -53,72 +53,74 @@ function reducer() {
     key = [key];
   }
 
-  (function () {
-    switch (action.type) {
-      case UPDATE_UI_STATE:
-        var _action$payload = action.payload;
-        var name = _action$payload.name;
-        var value = _action$payload.value;
+  switch (action.type) {
+    case UPDATE_UI_STATE:
+      var _action$payload = action.payload,
+          name = _action$payload.name,
+          value = _action$payload.value;
 
+      if (typeof value === 'function') {
+        state = state.updateIn(key.concat(name), value);
+      } else {
         state = state.setIn(key.concat(name), value);
-        break;
+      }
+      break;
 
-      case MASS_UPDATE_UI_STATE:
-        var _action$payload2 = action.payload;
-        var uiVars = _action$payload2.uiVars;
-        var transforms = _action$payload2.transforms;
+    case MASS_UPDATE_UI_STATE:
+      var _action$payload2 = action.payload,
+          uiVars = _action$payload2.uiVars,
+          transforms = _action$payload2.transforms;
 
-        state = state.withMutations(function (s) {
-          Object.keys(transforms).forEach(function (k) {
-            var path = uiVars[k];
-            (0, _invariant2.default)(path, 'Couldn\'t find variable ' + k + ' within your component\'s UI state ' + ('context. Define ' + k + ' before using it in the @ui decorator'));
+      state = state.withMutations(function (s) {
+        Object.keys(transforms).forEach(function (k) {
+          var path = uiVars[k];
+          (0, _invariant2.default)(path, 'Couldn\'t find variable ' + k + ' within your component\'s UI state ' + ('context. Define ' + k + ' before using it in the @ui decorator'));
 
-            s.setIn(path.concat(k), transforms[k]);
+          s.setIn(path.concat(k), transforms[k]);
+        });
+      });
+      break;
+
+    case SET_DEFAULT_UI_STATE:
+      // Replace all UI under a key with the given values
+      state = state.setIn(key, new _immutable.Map(action.payload.value));
+      break;
+
+    case MOUNT_UI_STATE:
+      var _action$payload3 = action.payload,
+          defaults = _action$payload3.defaults,
+          customReducer = _action$payload3.customReducer;
+
+      state = state.withMutations(function (s) {
+        // Set the defaults for the component
+        s.setIn(key, new _immutable.Map(defaults));
+
+        // If this component has a custom reducer add it to the list.
+        // We store the reducer func and UI path for the current component
+        // inside the __reducers map.
+        if (customReducer) {
+          var path = key.join('.');
+          s.setIn(['__reducers', path], {
+            path: key,
+            func: customReducer
           });
-        });
-        break;
+        }
 
-      case SET_DEFAULT_UI_STATE:
-        // Replace all UI under a key with the given values
-        state = state.setIn(key, new _immutable.Map(action.payload.value));
-        break;
+        return s;
+      });
+      break;
 
-      case MOUNT_UI_STATE:
-        var _action$payload3 = action.payload;
-        var defaults = _action$payload3.defaults;
-        var customReducer = _action$payload3.customReducer;
-
-        state = state.withMutations(function (s) {
-          // Set the defaults for the component
-          s.setIn(key, new _immutable.Map(defaults));
-
-          // If this component has a custom reducer add it to the list.
-          // We store the reducer func and UI path for the current component
-          // inside the __reducers map.
-          if (customReducer) {
-            var path = key.join('.');
-            s.setIn(['__reducers', path], {
-              path: key,
-              func: customReducer
-            });
-          }
-
-          return s;
-        });
-        break;
-
-      case UNMOUNT_UI_STATE:
-        // We have to use deleteIn as react unmounts root components first;
-        // this means that using setIn in child contexts will fail as the root
-        // context will be stored as undefined in our state
-        state = state.withMutations(function (s) {
-          s.deleteIn(key);
-          // Remove any custom reducers
-          s.deleteIn(['__reducers', key.join('.')]);
-        });
-        break;
-    }
-  })();
+    case UNMOUNT_UI_STATE:
+      // We have to use deleteIn as react unmounts root components first;
+      // this means that using setIn in child contexts will fail as the root
+      // context will be stored as undefined in our state
+      state = state.withMutations(function (s) {
+        s.deleteIn(key);
+        // Remove any custom reducers
+        s.deleteIn(['__reducers', key.join('.')]);
+      });
+      break;
+  }
 
   var customReducers = state.get('__reducers');
   if (customReducers.size > 0) {
@@ -140,8 +142,8 @@ function reducer() {
         // TODO: Potentially add the possibility for a global UI state reducer?
         //       Though why wouldn't you just add a custom reducer to the
         //       top-level component?
-        var path = r.path;
-        var func = r.func;
+        var path = r.path,
+            func = r.func;
 
         var newState = func(mut.getIn(path), action);
         if (newState === undefined) {
