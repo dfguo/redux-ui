@@ -10,7 +10,7 @@ var _extends = Object.assign || function (target) { for (var i = 1; i < argument
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
-var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
 exports.default = ui;
 
@@ -19,6 +19,8 @@ var _immutable = require('immutable');
 var _react = require('react');
 
 var _react2 = _interopRequireDefault(_react);
+
+var _propTypes = require('prop-types');
 
 var _redux = require('redux');
 
@@ -40,14 +42,8 @@ function _possibleConstructorReturn(self, call) { if (!self) { throw new Referen
 
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
-var any = _react.PropTypes.any;
-var array = _react.PropTypes.array;
-var func = _react.PropTypes.func;
-var node = _react.PropTypes.node;
-var object = _react.PropTypes.object;
-var string = _react.PropTypes.string;
 function ui(key) {
-  var opts = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
+  var opts = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
 
   if ((typeof key === 'undefined' ? 'undefined' : _typeof(key)) === 'object') {
     opts = key;
@@ -106,8 +102,7 @@ function ui(key) {
         // We do this in construct() to guarantee a new key at component
         // instantiation time wihch is needed for iterating through a list of
         // components with no explicit key
-
-        var _this = _possibleConstructorReturn(this, Object.getPrototypeOf(UI).call(this, props, ctx, queue));
+        var _this = _possibleConstructorReturn(this, (UI.__proto__ || Object.getPrototypeOf(UI)).call(this, props, ctx, queue));
 
         if (key === undefined) {
           _this.key = (WrappedComponent.displayName || WrappedComponent.name) + Math.floor(Math.random() * (1 << 30)).toString(16);
@@ -173,7 +168,7 @@ function ui(key) {
         value: function getDefaultUIState(uiState) {
           var _this2 = this;
 
-          var props = arguments.length <= 1 || arguments[1] === undefined ? this.props : arguments[1];
+          var props = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : this.props;
 
           var globalState = this.context.store.getState();
           var state = _extends({}, uiState);
@@ -222,7 +217,7 @@ function ui(key) {
         value: function getMergedContextVars() {
           var _this4 = this;
 
-          var ctx = arguments.length <= 0 || arguments[0] === undefined ? this.context : arguments[0];
+          var ctx = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.context;
 
           if (!this.uiVars || !this.uiPath) {
             var uiPath = ctx.uiPath || [];
@@ -249,13 +244,10 @@ function ui(key) {
       }, {
         key: 'getChildContext',
         value: function getChildContext() {
-          var _getMergedContextVars = this.getMergedContextVars();
-
-          var _getMergedContextVars2 = _slicedToArray(_getMergedContextVars, 2);
-
-          var uiVars = _getMergedContextVars2[0];
-          var uiPath = _getMergedContextVars2[1];
-
+          var _getMergedContextVars = this.getMergedContextVars(),
+              _getMergedContextVars2 = _slicedToArray(_getMergedContextVars, 2),
+              uiVars = _getMergedContextVars2[0],
+              uiPath = _getMergedContextVars2[1];
 
           return {
             uiKey: this.key,
@@ -284,12 +276,9 @@ function ui(key) {
         key: 'updateUI',
         value: function updateUI(name, value) {
           // Get a list of all UI variables available to this context (which
-
-          var _getMergedContextVars3 = this.getMergedContextVars();
-
-          var _getMergedContextVars4 = _slicedToArray(_getMergedContextVars3, 1);
-
-          var uiVars = _getMergedContextVars4[0];
+          var _getMergedContextVars3 = this.getMergedContextVars(),
+              _getMergedContextVars4 = _slicedToArray(_getMergedContextVars3, 1),
+              uiVars = _getMergedContextVars4[0];
 
           var uiVarPath = uiVars[name];
 
@@ -359,7 +348,6 @@ function ui(key) {
       }, {
         key: 'isUIDirty',
         value: function isUIDirty() {
-          // Might not be a good idea to use Immutable here
           var defaultUIState = new _immutable.Map(this.getDefaultUIState(opts.state));
           var currentUIState = (0, _utils.getUIState)(this.context.store.getState()).get(this.key);
           if (opts.dirty) {
@@ -385,36 +373,34 @@ function ui(key) {
       return UI;
     }(_react.Component), _class.propTypes = {
       // The entire global UI state via react-redux connector
-      ui: object.isRequired,
+      ui: _propTypes.object.isRequired,
       // These actions are passed via react-redux connector
-      setDefaultUI: func.isRequired,
-      updateUI: func.isRequired,
-      massUpdateUI: func.isRequired
-    }, _class.childContextTypes = {
+      setDefaultUI: _propTypes.func.isRequired,
+      updateUI: _propTypes.func.isRequired,
+      massUpdateUI: _propTypes.func.isRequired }, _class.childContextTypes = {
       // uiKey is the name of the parent context's key
-      uiKey: string,
+      uiKey: _propTypes.string,
       // uiPath is the current path of the UI context
-      uiPath: array,
+      uiPath: _propTypes.array,
       // uiVars is a map of UI variable names stored in state to the parent
       // context which controls them.
-      uiVars: object,
+      uiVars: _propTypes.object,
 
       // Actions to pass to children
-      updateUI: func,
-      resetUI: func,
-      isUIDirty: func
-    }, _class.contextTypes = {
+      updateUI: _propTypes.func,
+      resetUI: _propTypes.func,
+      isUIDirty: _propTypes.func }, _class.contextTypes = {
       // This is used in mergeUIProps and construct() to immediately set
       // props.
-      store: any,
+      store: _propTypes.any,
 
-      uiKey: string,
-      uiPath: array,
-      uiVars: object,
+      uiKey: _propTypes.string,
+      uiPath: _propTypes.array,
+      uiVars: _propTypes.object,
 
-      updateUI: func,
-      resetUI: func,
-      isUIDirty: func
+      updateUI: _propTypes.func,
+      resetUI: _propTypes.func,
+      isUIDirty: _propTypes.func
     }, _temp));
   };
 }
